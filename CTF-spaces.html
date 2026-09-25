@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTF — Les 4 Sceaux</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --panel: #0d1117;
+    --border: #30363d;
+    --accent: #00ffaa;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --danger: #ff6b6b;
+    --part2: 626f73735f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: radial-gradient(circle at 50% 0%, #1a2332, var(--bg) 70%);
+    font-family: 'Courier New', monospace;
+    color: var(--text);
+    padding: 30px 20px 60px;
+  }
+  header { max-width: 660px; margin: 0 auto 30px; text-align: center; }
+  h1 { font-size: 1.6rem; color: var(--accent); margin-bottom: 10px; letter-spacing: 1px; }
+  .subtitle { color: var(--muted); font-size: .85rem; margin-bottom: 20px; }
+  .progress { height: 8px; background: #161b22; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+  .progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #00ffaa, #00b3ff);
+    transition: width .6s ease;
+  }
+  .progress-txt { font-size: .85rem; color: var(--muted); }
+  .levels { max-width: 660px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 22px; transition: all .35s;
+  }
+  .card.locked { opacity: .35; pointer-events: none; }
+  .card.active { border-color: var(--accent); box-shadow: 0 0 30px rgba(0,255,170,.12); }
+  .card.solved {
+    border-color: #2ea043;
+    background: linear-gradient(180deg, rgba(0,255,170,.05), transparent);
+  }
+  .card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .badge {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: #161b22; border: 1px solid var(--border);
+    font-size: 1rem; flex-shrink: 0;
+  }
+  .card.active .badge { border-color: var(--accent); color: var(--accent); }
+  .card.solved .badge { background: rgba(0,255,170,.15); border-color: var(--accent); color: var(--accent); }
+  .card h2 { font-size: 1rem; color: var(--text); font-weight: normal; }
+  .card.solved h2 { color: var(--accent); }
+  .hint { font-size: .82rem; color: var(--muted); margin-bottom: 14px; line-height: 1.55; }
+  .hint code { background: #161b22; padding: 1px 5px; border-radius: 3px; color: var(--accent); font-size: .78rem; }
+  input {
+    width: 100%; padding: 11px 14px; background: #161b22;
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: inherit; font-size: .95rem;
+    outline: none; transition: border-color .2s;
+  }
+  input:focus { border-color: var(--accent); }
+  input:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; gap: 10px; margin-top: 10px; }
+  button {
+    padding: 10px 20px; background: var(--accent); color: var(--bg);
+    border: none; border-radius: 8px; font-family: inherit;
+    font-weight: bold; font-size: .88rem; cursor: pointer; transition: all .15s;
+  }
+  button:hover:not(:disabled) { box-shadow: 0 0 15px rgba(0,255,170,.5); }
+  button:active:not(:disabled) { transform: scale(.97); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .msg { margin-top: 12px; font-size: .88rem; min-height: 1.2em; }
+  .msg.ok { color: var(--accent); }
+  .msg.ko { color: var(--danger); }
+  .flag {
+    margin-top: 14px; padding: 12px 14px;
+    background: rgba(0,255,170,.08);
+    border: 1px dashed var(--accent); border-radius: 8px;
+    color: var(--accent); font-size: .85rem;
+    word-break: break-all; display: none;
+  }
+  .victory {
+    display: none; max-width: 660px; margin: 20px auto 0;
+    text-align: center; padding: 30px;
+    background: linear-gradient(135deg, rgba(0,255,170,.1), rgba(0,179,255,.1));
+    border: 1px solid var(--accent); border-radius: 12px;
+    animation: pop .5s ease;
+  }
+  .victory h2 { color: var(--accent); margin-bottom: 10px; font-size: 1.3rem; }
+  .victory p { color: var(--muted); font-size: .9rem; }
+  @keyframes pop {
+    0% { transform: scale(.9); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  footer { max-width: 660px; margin: 30px auto 0; text-align: center; }
+  .reset {
+    background: none; border: none; color: var(--muted);
+    font-family: inherit; font-size: .78rem; cursor: pointer;
+    text-decoration: underline; padding: 8px;
+  }
+  .reset:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏰 CTF — Les 4 Sceaux</h1>
+  <p class="subtitle">Brise les 4 niveaux pour récupérer tous les flags.</p>
+  <div class="progress"><div class="progress-bar" id="bar"></div></div>
+  <p class="progress-txt" id="progressTxt">0 / 4 sceaux brisés</p>
+</header>
+
+<div class="levels">
+
+  <div class="card active" id="card-1">
+    <div class="card-head">
+      <div class="badge">1</div>
+      <h2>Niveau 1 — Le Coffre de l'Admin</h2>
+    </div>
+    <p class="hint">
+      Un simple coffre protégé par un mot de passe. Ce dernier est encodé en <strong>base64</strong> quelque part dans le code source. Ouvre les DevTools (F12) et fouille.
+    </p>
+    <input type="text" id="in-1" placeholder="Mot de passe..." autocomplete="off">
+    <div class="row"><button data-lvl="1">Déverrouiller</button></div>
+    <p class="msg" id="msg-1"></p>
+    <div class="flag" id="flag-1"></div>
+  </div>
+
+  <div class="card locked" id="card-2">
+    <div class="card-head">
+      <div class="badge">🔒</div>
+      <h2>Niveau 2 — Le Message Crypté</h2>
+    </div>
+    <p class="hint">
+      Le mot de passe a subi deux transformations : il a d'abord été <strong>inversé</strong>, puis chiffré avec <strong>ROT13</strong>. À toi de le remettre dans le bon sens.
+    </p>
+    <input type="text" id="in-2" placeholder="Mot de passe..." autocomplete="off">
+    <div class="row"><button data-lvl="2">Déverrouiller</button></div>
+    <p class="msg" id="msg-2"></p>
+    <div class="flag" id="flag-2"></div>
+  </div>
+
+  <div class="card locked" id="card-3">
+    <div class="card-head">
+      <div class="badge">🔒</div>
+      <h2>Niveau 3 — Le Sceau Binaire</h2>
+    </div>
+    <p class="hint">
+      Le mot de passe a été chiffré avec un <strong>XOR</strong> octet par octet. La clé et le tableau de codes sont dans le JavaScript. Inverse l'opération.
+    </p>
+    <input type="text" id="in-3" placeholder="Mot de passe..." autocomplete="off">
+    <div class="row"><button data-lvl="3">Déverrouiller</button></div>
+    <p class="msg" id="msg-3"></p>
+    <div class="flag" id="flag-3"></div>
+  </div>
+
+  <div class="card locked" id="card-4" data-part1="ZmluYWxf">
+    <div class="card-head">
+      <div class="badge">🔒</div>
+      <h2>Niveau 4 — Le Boss Final</h2>
+    </div>
+    <p class="hint">
+      Le mot de passe est découpé en <strong>3 morceaux</strong> cachés à 3 endroits :
+      <br>• <strong>Partie 1</strong> → un <code>data-attribute</code> HTML (base64)
+      <br>• <strong>Partie 2</strong> → une variable CSS (hexadécimal)
+      <br>• <strong>Partie 3</strong> → le JavaScript (inversé)
+      <br>Assemble-les : partie1 + partie2 + partie3.
+    </p>
+    <input type="text" id="in-4" placeholder="Mot de passe..." autocomplete="off">
+    <div class="row"><button data-lvl="4">Déverrouiller</button></div>
+    <p class="msg" id="msg-4"></p>
+    <div class="flag" id="flag-4"></div>
+  </div>
+
+</div>
+
+<div class="victory" id="victory">
+  <h2>🎉 Félicitations, Maître du DOM !</h2>
+  <p>Tu as brisé les 4 sceaux. Respect éternel.</p>
+</div>
+
+<footer>
+  <button class="reset" id="reset">↺ Réinitialiser la progression</button>
+</footer>
+
+<script>
+/* ===================================================
+   DONNÉES CACHÉES — À TOI DE LES TROUVER !
+   =================================================== */
+
+// Niveau 1 — base64
+const _k1 = "cDRzc3cwcmRfYzBmZnJlXzIwMjU=";
+
+// Niveau 2 — inversé puis ROT13
+const _k2 = "5202_ergfnz_31gbe";
+
+// Niveau 3 — XOR avec _xorKey
+const _xorKey = 42;
+const _k3 = [82,69,88,117,67,89,117,76,95,68,117,24,26,24,31];
+
+// Niveau 4 — la partie 3 (inversée) :
+const _k4p3 = "5202";
+
+/* ===================================================
+   HELPERS DE DÉCODAGE
+   =================================================== */
+const reverse = s => s.split('').reverse().join('');
+
+const rot13 = s => s.replace(/[a-zA-Z]/g, c => {
+  const code = c.charCodeAt(0);
+  const base = code < 97 ? 65 : 97;
+  return String.fromCharCode(((code - base + 13) % 26) + base);
+});
+
+const hexDecode = h =>
+  h.match(/.{2}/g).map(x => String.fromCharCode(parseInt(x, 16))).join('');
+
+const xorDecode = (arr, key) =>
+  arr.map(c => String.fromCharCode(c ^ key)).join('');
+
+/* ===================================================
+   VÉRIFICATION DES MOTS DE PASSE
+   =================================================== */
+function verifyPassword(level, val) {
+  switch (level) {
+    case 1:
+      return val === atob(_k1);
+    case 2:
+      return val === rot13(reverse(_k2));
+    case 3:
+      return val === xorDecode(_k3, _xorKey);
+    case 4: {
+      // On récupère les parties depuis leur emplacement d'origine
+      const p1 = atob(document.getElementById('card-4').dataset.part1);
+      const p2 = hexDecode(
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--part2').trim()
+      );
+      const p3 = reverse(_k4p3);
+      return val === p1 + p2 + p3;
+    }
+    default:
+      return false;
+  }
+}
+
+/* ===================================================
+   FLAGS (récompenses)
+   =================================================== */
+const FLAGS = [
+  "CTF{c0ffr3_cr4ck3d_2025}",
+  "CTF{r0t4t3d_l1k3_4_pr0}",
+  "CTF{x0r_m4g1c_unl0ck3d}",
+  "CTF{m4st3r_0f_th3_d0m_2025}"
+];
+
+/* ===================================================
+   MOTEUR DU JEU
+   =================================================== */
+const STORAGE_KEY = 'ctf_4sceaux_progress';
+let solvedLevels = new Set();
+
+function loadProgress() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    solvedLevels = new Set(saved);
+  } catch (e) {
+    solvedLevels = new Set();
+  }
+}
+
+function saveProgress() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...solvedLevels]));
+  } catch (e) {}
+}
+
+function applyState() {
+  let allPrevSolved = true;
+  for (let i = 1; i <= 4; i++) {
+    const card   = document.getElementById('card-' + i);
+    const input  = document.getElementById('in-' + i);
+    const btn    = card.querySelector('button');
+    const badge  = card.querySelector('.badge');
+    const msg    = document.getElementById('msg-' + i);
+    const flagEl = document.getElementById('flag-' + i);
+
+    if (solvedLevels.has(i)) {
+      card.className = 'card solved';
+      badge.textContent = '✓';
+      input.disabled = true;
+      btn.disabled = true;
+      msg.textContent = "✅ Sceau brisé !";
+      msg.className = "msg ok";
+      flagEl.textContent = "🏁 FLAG : " + FLAGS[i - 1];
+      flagEl.style.display = 'block';
+    } else if (allPrevSolved) {
+      card.className = 'card active';
+      badge.textContent = i;
+      input.disabled = false;
+      btn.disabled = false;
+      msg.textContent = "";
+      msg.className = "msg";
+      flagEl.style.display = 'none';
+      allPrevSolved = false;
+    } else {
+      card.className = 'card locked';
+      badge.textContent = '🔒';
+      input.disabled = true;
+      btn.disabled = true;
+      msg.textContent = "";
+      msg.className = "msg";
+      flagEl.style.display = 'none';
+    }
+  }
+
+  document.getElementById('victory').style.display =
+    solvedLevels.size === 4 ? 'block' : 'none';
+
+  updateProgress();
+}
+
+function updateProgress() {
+  const pct = (solvedLevels.size / 4) * 100;
+  document.getElementById('bar').style.width = pct + '%';
+  document.getElementById('progressTxt').textContent =
+    solvedLevels.size + " / 4 sceaux brisés";
+}
+
+function attempt(level) {
+  const input = document.getElementById('in-' + level);
+  const msg   = document.getElementById('msg-' + level);
+  const val   = input.value.trim();
+
+  if (val === "") {
+    msg.textContent = "⚠️ Entre un mot de passe.";
+    msg.className = "msg ko";
+    return;
+  }
+
+  if (verifyPassword(level, val)) {
+    solvedLevels.add(level);
+    saveProgress();
+    applyState();
+
+    setTimeout(() => {
+      const next = document.getElementById('card-' + (level + 1));
+      const target = next || document.getElementById('victory');
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (next) {
+        const nextInput = document.getElementById('in-' + (level + 1));
+        if (nextInput && !nextInput.disabled) nextInput.focus();
+      }
+    }, 300);
+  } else {
+    msg.textContent = "❌ Mot de passe incorrect.";
+    msg.className = "msg ko";
+  }
+}
+
+/* ===================================================
+   INITIALISATION
+   =================================================== */
+document.querySelectorAll('button[data-lvl]').forEach(btn => {
+  btn.addEventListener('click', () => attempt(parseInt(btn.dataset.lvl)));
+});
+
+for (let i = 1; i <= 4; i++) {
+  document.getElementById('in-' + i).addEventListener('keydown', e => {
+    if (e.key === 'Enter') attempt(i);
+  });
+}
+
+document.getElementById('reset').addEventListener('click', () => {
+  if (confirm("Réinitialiser toute la progression ?")) {
+    solvedLevels.clear();
+    saveProgress();
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById('in-' + i).value = "";
+    }
+    applyState();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
+
+console.log("%c🏰 CTF — Les 4 Sceaux", "color:#00ffaa;font-size:16px;font-weight:bold");
+console.log("%cFouille le code source (Ctrl+U) et les DevTools (F12). Tout est là.", "color:#8b949e;font-size:12px");
+
+loadProgress();
+applyState();
+</script>
+
+</body>
+</html>
