@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTF #1 — Le Coffre de l'Admin</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 0%, #1a2332, #0a0e14 70%);
+    font-family: 'Courier New', monospace;
+    color: #c9d1d9; padding: 20px;
+  }
+  .coffre {
+    width: 100%; max-width: 480px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 0 40px rgba(0, 255, 170, 0.08);
+  }
+  h1 { font-size: 1.4rem; color: #00ffaa; margin-bottom: 8px; }
+  .sub { color: #8b949e; font-size: .85rem; margin-bottom: 24px; }
+  input {
+    width: 100%; padding: 12px 14px;
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 8px; color: #c9d1d9;
+    font-family: inherit; font-size: 1rem; outline: none;
+    transition: border-color .2s;
+  }
+  input:focus { border-color: #00ffaa; }
+  button {
+    width: 100%; margin-top: 12px; padding: 12px;
+    background: #00ffaa; color: #0d1117;
+    border: none; border-radius: 8px;
+    font-family: inherit; font-weight: bold; font-size: 1rem;
+    cursor: pointer; transition: transform .1s, box-shadow .2s;
+  }
+  button:hover { box-shadow: 0 0 20px rgba(0,255,170,.4); }
+  button:active { transform: scale(.98); }
+  #msg { margin-top: 16px; font-size: .9rem; min-height: 1.2em; }
+  .ok { color: #00ffaa; }
+  .ko { color: #ff6b6b; }
+  .flag {
+    margin-top: 16px; padding: 14px;
+    background: rgba(0,255,170,.08);
+    border: 1px dashed #00ffaa; border-radius: 8px;
+    word-break: break-all; color: #00ffaa; display: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================= -->
+<!--  INDICE 1 : Regarde bien le code source...    -->
+<!--  Le mot de passe n'est pas en clair.          -->
+<!-- ============================================= -->
+
+<div class="coffre">
+  <h1>🔒 Coffre de l'Admin</h1>
+  <p class="sub">Mission : retrouve le mot de passe pour ouvrir le coffre.</p>
+
+  <input id="pass" type="text" placeholder="Mot de passe..." autocomplete="off">
+  <button onclick="ouvrir()">Déverrouiller</button>
+  <p id="msg"></p>
+  <div class="flag" id="flag"></div>
+</div>
+
+<script>
+  /* Ouvre la console (F12) pour un indice... */
+  console.log("%c💡 Indice : le mot de passe est encodé en base64.", "color:#00ffaa;font-size:14px");
+  console.log("%cUtilise atob() pour le décoder.", "color:#8b949e");
+
+  // Variable leurre (ne fonctionne pas)
+  const _fake = "cDRzc3cwcmRfZmFrZQ==";
+
+  // La vraie clé (base64)
+  const _k = "cDRzc3cwcmRfYzBmZnJlXzIwMjU=";
+
+  // Le flag (base64 aussi, pour éviter la triche)
+  const _flag = "Q1RGe2MwZmZyM19jcjRjazNkXzIwMjV9";
+
+  function ouvrir() {
+    const val = document.getElementById("pass").value.trim();
+    const msg = document.getElementById("msg");
+    const flag = document.getElementById("flag");
+
+    if (val === atob(_k)) {
+      msg.textContent = "✅ Accès autorisé. Bien joué !";
+      msg.className = "ok";
+      flag.textContent = "🏁 FLAG : " + atob(_flag);
+      flag.style.display = "block";
+    } else {
+      msg.textContent = "❌ Mot de passe incorrect.";
+      msg.className = "ko";
+    }
+  }
+
+  document.getElementById("pass").addEventListener("keydown", e => {
+    if (e.key === "Enter") ouvrir();
+  });
+</script>
+
+</body>
+</html>
